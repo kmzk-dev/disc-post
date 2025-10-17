@@ -4,7 +4,49 @@ document.addEventListener('DOMContentLoaded', function() {
     const settingsBtn = document.getElementById('settings-btn');
     const webhookSelect = document.getElementById('webhook_select');
     const loaderOverlay = document.getElementById('loader-overlay');
-  // Load webhooks from storage and populate the dropdown
+    const clearDraftBtn = document.getElementById('clear-draft-btn');
+
+    // modal action
+    const confirmModal = document.getElementById('confirm-modal');
+    const confirmOk = document.getElementById('confirm-ok');
+    const confirmCancel = document.getElementById('confirm-cancel');
+    const modalInstance = M.Modal.init(confirmModal, {
+        onOpenEnd: function() {
+            // モーダルが開いたらキャンセルボタンにフォーカスする
+            confirmCancel.focus();
+        },
+        onCloseEnd: function() {
+            // モーダルが閉じた後、必ずテキストエリアにフォーカスを戻す
+            messageInput.focus();
+        }
+    });
+    // Load saved message from storage
+    chrome.storage.local.get('draftMessage', function(data) {
+        if (data.draftMessage) {
+            messageInput.value = data.draftMessage;
+            // Materializeのテキストエリアの高さを更新
+            M.textareaAutoResize(messageInput);
+        }
+    });
+
+    // Save message to storage on input
+    messageInput.addEventListener('input', function() {
+        chrome.storage.local.set({ 'draftMessage': messageInput.value });
+    });
+    // Clear draft button functionality
+    // Handle clear draft button click
+        clearDraftBtn.addEventListener('click', function() {
+            if (messageInput.value.length > 0) {
+                modalInstance.open();
+            }
+        });
+    // Handle modal confirmation
+    confirmOk.addEventListener('click', function() {
+        messageInput.value = '';
+        chrome.storage.local.remove('draftMessage');
+        M.textareaAutoResize(messageInput);
+    });
+    // Load webhooks from storage and populate the dropdown
     function loadWebhooks() {
         chrome.storage.sync.get(['webhooks', 'lastSelectedWebhookUrl'], function(data) {
             const webhooks = data.webhooks || [];
@@ -61,6 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => {
             if (response.ok) {
+                chrome.storage.local.remove('draftMessage');
                 window.close();
             } else {
                 alert('you have an error in posting.');
