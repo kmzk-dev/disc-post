@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="statics/css/root.css">
     <style>
         body {
-            width: 450px;
+            width: 500px;
             padding: 15px;
             position: relative;
         }
@@ -27,7 +27,7 @@
         }
         /* textarea */
         textarea {
-            height: 200px !important;
+            height: 250px !important;
         }
         textarea:focus {
             border-bottom: 3px solid var(--forcus-color)  !important;
@@ -105,7 +105,11 @@
             <textarea id="message" class="materialize-textarea"></textarea>
             <label for="textarea1">Entry your post message</label>
         </div>
-        
+        <div class="right-align" style="margin-top: -20px; margin-bottom: 10px;">
+            <button id="clear-draft-btn" class="btn-flat waves-effect waves-light" style="font-size: 12px; color: #9e9e9e; text-transform: none;">
+                <i class="material-icons left" style="font-size: 16px; margin-right: 4px;">delete_outline</i>Clear
+            </button>
+        </div>
         <div class="input-field">
             <select id="webhook_select">
                 <!--popup.js create views-->
@@ -116,6 +120,16 @@
         <button id="postButton" class="btn waves-effect waves-light">
                 CTRL+Enter<i class="material-icons right">send</i>
         </button>
+    </div>
+
+    <div id="confirm-modal" class="modal" style="max-width: 350px;">
+        <div class="modal-content">
+            <h6>Are you sure to clear messages ?</h6>
+        </div>
+        <div class="modal-footer">
+            <button href="#!" id="confirm-cancel" class="modal-close waves-effect waves-green btn-flat">CANCEL</button>
+            <button href="#!" id="confirm-ok" class="modal-close waves-effect waves-green btn-flat">OK</button>
+        </div>
     </div>
     <script src="statics/js/materialize.min.js"></script>
     <script src="statics/js/popup.js"></script>
