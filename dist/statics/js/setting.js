@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const addWebhookButton = document.getElementById('addWebhook');
     const webhookUrlInput = document.getElementById('webhook_url');
     const webhookNameInput = document.getElementById('webhook_name');
+    const webhookPrefixInput = document.getElementById('webhook_prefix');
     const webhookList = document.getElementById('webhookList');
 
     function loadWebhooks() {
@@ -11,14 +12,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
             webhooks.forEach((hook, index) => {
                 const li = document.createElement('li');
-                li.className = '';
                 li.innerHTML = `
-                    <div class="input-field">
-                        <input type="text" value="${hook.name}" class="webhook-name-input" data-index="${index}" readonly>
-                    </div>
-                    <div class="action-icons">
-                        <i class="material-icons edit-btn blue-text text-lighten-2" data-index="${index}">edit</i>
-                        <i class="material-icons delete-btn red-text text-lighten-2" data-index="${index}">delete</i>
+                    <div class="row">
+                        <div class="input-field col s3">
+                            <input id="name_${index}" type="text" value="${hook.name}" class="webhook-name-input" data-index="${index}" readonly>
+                            <label for="name_${index}" class="active">Name</label>
+                        </div>
+                        <div class="input-field col s8">
+                            <input id="prefix_${index}" type="text" value="${hook.prefix || ''}" class="webhook-prefix-input" data-index="${index}" readonly>
+                            <label for="prefix_${index}" class="active">Prefix</label>
+                        </div>
+                        <div class="col s1 action-icons">
+                            <i class="material-icons edit-btn blue-text text-lighten-2" data-index="${index}" style="cursor: pointer;">edit</i>
+                            <i class="material-icons delete-btn red-text text-lighten-2" data-index="${index}" style="cursor: pointer;">delete</i>
+                        </div>
                     </div>
                 `;
                 webhookList.appendChild(li);
@@ -35,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.edit-btn').forEach(button => {
             button.addEventListener('click', handleEditClick);
         });
-        document.querySelectorAll('.webhook-name-input').forEach(input => {
+        document.querySelectorAll('.webhook-name-input, .webhook-prefix-input').forEach(input => {
             input.addEventListener('keydown', handleInputKeydown);
             input.addEventListener('blur', handleInputBlur);
         });
@@ -43,10 +50,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function handleEditClick(e) {
         const index = e.target.dataset.index;
-        const input = document.querySelector(`.webhook-name-input[data-index='${index}']`);
-        input.readOnly = false;
-        input.focus();
-        input.select();
+        const nameInput = document.querySelector(`.webhook-name-input[data-index='${index}']`);
+        const prefixInput = document.querySelector(`.webhook-prefix-input[data-index='${index}']`);
+        nameInput.readOnly = false;
+        prefixInput.readOnly = false;
+        nameInput.focus();
+        nameInput.select();
     }
 
     function handleInputKeydown(e) {
@@ -57,35 +66,55 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function handleInputBlur(e) {
-        const input = e.target;
-        input.readOnly = true;
+        const index = e.target.dataset.index;
+        
+        setTimeout(() => {
+            const nameInput = document.querySelector(`.webhook-name-input[data-index='${index}']`);
+            const prefixInput = document.querySelector(`.webhook-prefix-input[data-index='${index}']`);
 
-        const index = input.dataset.index;
-        const newName = input.value.trim();
+            // If focus has moved to a different element that is not the paired input, then save and set to readonly.
+            if (document.activeElement !== nameInput && document.activeElement !== prefixInput) {
+                nameInput.readOnly = true;
+                prefixInput.readOnly = true;
 
-        if (newName === '') {
-            alert('it is required to enter a channel name');
-            loadWebhooks();
-            return;
-        }
+                const newName = nameInput.value.trim();
+                const newPrefix = prefixInput.value.trim();
 
-        chrome.storage.sync.get('webhooks', function(data) {
-            const webhooks = data.webhooks || [];
-            if (webhooks[index] && webhooks[index].name !== newName) {
-                webhooks[index].name = newName;
-                chrome.storage.sync.set({ 'webhooks': webhooks });
+                if (newName === '') {
+                    alert('it is required to enter a channel name');
+                    loadWebhooks();
+                    return;
+                }
+
+                chrome.storage.sync.get('webhooks', function(data) {
+                    const webhooks = data.webhooks || [];
+                    if (webhooks[index]) {
+                        const oldName = webhooks[index].name;
+                        const oldPrefix = webhooks[index].prefix || '';
+                        if (oldName !== newName || oldPrefix !== newPrefix) {
+                            webhooks[index].name = newName;
+                            webhooks[index].prefix = newPrefix;
+                            chrome.storage.sync.set({ 'webhooks': webhooks }, () => {
+                                // Clean up the wrong key just in case
+                                chrome.storage.sync.remove('undefined');
+                            });
+                        }
+                    }
+                });
             }
-        });
+        }, 100);
     }
 
     function handleDeleteClick(e) {
         if (confirm('you want to delete this webhook?')) {
             const index = e.target.dataset.index;
-            chrome.storage.sync.get('webhooks', function(data) {
-                const webhooks = data.webhooks || [];
+            chrome.storage.sync.get(['webhooks', 'undefined'], function(data) {
+                let webhooks = data.webhooks || data.undefined || [];
                 webhooks.splice(index, 1);
                 chrome.storage.sync.set({ 'webhooks': webhooks }, function() {
-                    loadWebhooks();
+                    chrome.storage.sync.remove('undefined', () => {
+                        loadWebhooks();
+                    });
                 });
             });
         }
@@ -94,6 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
     addWebhookButton.addEventListener('click', function() {
         const url = webhookUrlInput.value.trim();
         const name = webhookNameInput.value.trim();
+        const prefix = webhookPrefixInput.value.trim();
 
         if (url === '' || name === '') {
             alert('it is required to enter both the WEBHOOK URL and the channel name');
@@ -105,13 +135,17 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        chrome.storage.sync.get('webhooks', function(data) {
-            const webhooks = data.webhooks || [];
-            webhooks.push({ url: url, name: name });
+        chrome.storage.sync.get(['webhooks', 'undefined'], function(data) {
+            let webhooks = data.webhooks || data.undefined || [];
+            webhooks.push({ url: url, name: name, prefix: prefix });
             chrome.storage.sync.set({ 'webhooks': webhooks }, function() {
-                webhookUrlInput.value = '';
-                webhookNameInput.value = '';
-                loadWebhooks();
+                chrome.storage.sync.remove('undefined', () => {
+                    webhookUrlInput.value = '';
+                    webhookNameInput.value = '';
+                    webhookPrefixInput.value = '';
+                    M.updateTextFields();
+                    loadWebhooks();
+                });
             });
         });
     });

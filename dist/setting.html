@@ -8,16 +8,18 @@
     <link rel="stylesheet" href="statics/css/root.css">
     <style>
     #webhookList li {
-        display: flex;
-        align-items: center;
         padding: 0.5rem 0;
     }
-    #webhookList li .input-field {
-        flex-grow: 1;
-        margin: 0 1rem 0 0;
+    #webhookList .row {
+        margin-bottom: 0;
+        display: flex;
+        align-items: center;
     }
-    #webhookList li .action-icons {
-        flex-shrink: 0;
+    #webhookList .input-field {
+        margin-top: 0.5rem;
+    }
+    #webhookList .action-icons {
+        text-align: right;
     }
     </style>
 </head>
@@ -36,6 +38,10 @@
             <input type="text" class="validate" id="webhook_name">
             <label for="webhook_name">Webhook Name (ex: general)</label>
         </div>
+        <div class="input-field">
+            <input type="text" id="webhook_prefix">
+            <label for="webhook_prefix">Prefix (Optional ex: Worklog:)</label>
+        </div>
         <div class="">
             <button id="addWebhook" class="waves-effect waves-light btn">
                 + ADD
@@ -43,13 +49,12 @@
         </div>
         <h5 class="mt-5 mi">WEBHOOK ITEMS</h5>
         <blockquote>
-            You can rename webhook name by clicking the edit icon.<br>
+            You can rename webhook name and prefix by clicking the edit icon.<br>
             however, you cannot change webhook URL.<br>
             To change URL, please delete the item and add again.
         </blockquote>
         <ul id="webhookList">
-            <!--setting.js create views-->
-        </ul>
+            </ul>
     </div>
 
     <script src="statics/js/materialize.min.js"></script>
