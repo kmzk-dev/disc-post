@@ -12,19 +12,33 @@ document.addEventListener('DOMContentLoaded', function() {
     const confirmCancel = document.getElementById('confirm-cancel');
     const modalInstance = M.Modal.init(confirmModal, {
         onOpenEnd: function() {
-            // モーダルが開いたらキャンセルボタンにフォーカスする
             confirmCancel.focus();
         },
         onCloseEnd: function() {
-            // モーダルが閉じた後、必ずテキストエリアにフォーカスを戻す
             messageInput.focus();
         }
     });
+
+    // Replace label content in textarea
+    function updatePrefixDisplay() {
+        const messageLabel = document.getElementById('message-label');
+        if (webhookSelect.selectedIndex > -1) {
+            const selectedOption = webhookSelect.options[webhookSelect.selectedIndex];
+            const prefix = selectedOption.dataset.prefix;
+
+            if (prefix && prefix.length > 0) {
+                messageLabel.textContent = '( Prefixed )' + prefix;
+            } else {
+                messageLabel.textContent = 'Entry your post message';
+            }
+        } else {
+            messageLabel.textContent = 'Entry your post message';
+        }
+    }
     // Load saved message from storage
     chrome.storage.local.get('draftMessage', function(data) {
         if (data.draftMessage) {
             messageInput.value = data.draftMessage;
-            // Materializeのテキストエリアの高さを更新
             M.textareaAutoResize(messageInput);
         }
     });
@@ -46,32 +60,56 @@ document.addEventListener('DOMContentLoaded', function() {
         chrome.storage.local.remove('draftMessage');
         M.textareaAutoResize(messageInput);
     });
+    
     // Load webhooks from storage and populate the dropdown
     function loadWebhooks() {
-        chrome.storage.sync.get(['webhooks', 'lastSelectedWebhookUrl'], function(data) {
+        chrome.storage.sync.get(['webhooks', 'lastSelectedWebhookUrl', 'lastSelectedWebhookObj'], function(data) {
             const webhooks = data.webhooks || [];
-            const lastSelectedWebhookUrl = data.lastSelectedWebhookUrl;
+            const lastSelectedUrl = data.lastSelectedWebhookUrl; // this key is old logic
+            const lastSelectedObj = data.lastSelectedWebhookObj; // this key is new logic
             webhookSelect.innerHTML = '';
 
             if (webhooks.length === 0) {
                 chrome.runtime.sendMessage({ action: 'openSettings' });
                 window.close();
             } else {
+                let isSelectedSet = false;
                 webhooks.forEach(hook => {
                     const option = document.createElement('option');
                     option.value = hook.url;
                     option.textContent = "# " + hook.name;
+                    option.dataset.prefix = hook.prefix || '';
                     webhookSelect.appendChild(option);
-                    // Check if this webhook was the last selected one
-                    if (hook.url === lastSelectedWebhookUrl) {
-                    option.selected = true;
-                    }
                 });
+
+                // Set last selected option
+                // priority 1: new logic ( storage with lastSelectedWebhookObj )
+                if (lastSelectedObj) {
+                    for (let i = 0; i < webhookSelect.options.length; i++) {
+                        const opt = webhookSelect.options[i];
+                        if (opt.value === lastSelectedObj.url && opt.textContent === `# ${lastSelectedObj.name}`) {
+                            opt.selected = true;
+                            isSelectedSet = true;
+                            break;
+                        }
+                    }
+                }
+                // priority 2: old logic ( storage without lastSelectedWebhookObj )
+                if (!isSelectedSet && lastSelectedUrl) {
+                    for (let i = 0; i < webhookSelect.options.length; i++) {
+                        const opt = webhookSelect.options[i];
+                        if (opt.value === lastSelectedUrl) {
+                            opt.selected = true;
+                            break;
+                        }
+                    }
+                }
             }
 
             // Initialize Materialize select
             const elems = document.querySelectorAll('select');
             M.FormSelect.init(elems);
+            updatePrefixDisplay();
         });
     }
 
@@ -80,10 +118,16 @@ document.addEventListener('DOMContentLoaded', function() {
         loaderOverlay.classList.add('is-loading');
         
         const message = messageInput.value.trim();
-        const selectedWebhookUrl = webhookSelect.value;
+        const selectedOption = webhookSelect.options[webhookSelect.selectedIndex];
+        const selectedWebhookUrl = selectedOption.value;
+        const selectedWebhookName = selectedOption.textContent.substring(2); //remove "# "
+        const prefix = selectedOption.dataset.prefix;
 
-        // Save the selected webhook URL to storage
-        chrome.storage.sync.set({ 'lastSelectedWebhookUrl': selectedWebhookUrl });
+        const lastSelectedObj = { url: selectedWebhookUrl, name: selectedWebhookName };
+        chrome.storage.sync.set({
+            'lastSelectedWebhookObj': lastSelectedObj,
+            'lastSelectedWebhookUrl': selectedWebhookUrl
+        });
 
         if (message === '') {
             alert('Enter a message to send.');
@@ -92,13 +136,15 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        const content = prefix ? `${prefix}${message}` : message;
+
         fetch(selectedWebhookUrl, {
             method: 'POST',
             headers: {
             'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-            content: message
+            content: content
             })
         })
         .then(response => {
@@ -137,8 +183,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Save the selected webhook URL when the user changes the selection
     webhookSelect.addEventListener('change', function() {
-        const selectedWebhookUrl = webhookSelect.value;
-        chrome.storage.sync.set({ 'lastSelectedWebhookUrl': selectedWebhookUrl });
+        const selectedOption = webhookSelect.options[webhookSelect.selectedIndex];
+        const selectedWebhookUrl = selectedOption.value;
+        const selectedWebhookName = selectedOption.textContent.substring(2); // remove "# "
+        const lastSelectedObj = { url: selectedWebhookUrl, name: selectedWebhookName };
+        chrome.storage.sync.set({
+            'lastSelectedWebhookObj': lastSelectedObj,
+            'lastSelectedWebhookUrl': selectedWebhookUrl,
+        });
+        updatePrefixDisplay();
     });
 
     messageInput.focus();
