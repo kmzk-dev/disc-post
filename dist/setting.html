@@ -21,14 +21,20 @@
     #webhookList .action-icons {
         text-align: right;
     }
+    blockquote {
+        font-size: medium;
+    }
     </style>
 </head>
 <body>
     <div class="container">
         <h4 class="">ENTRY WEBHOOK ITEM</h4>
         <blockquote>
-            Webhook Name,without # typing,is free text for your management.It is not same name on Discord.<br>
-            Number of Webhook items is not limited,but please be careful that too many items makes your selection hard.
+            <b>1. Webhook Name,without # typing,is free text for your management.It is not same name on Discord.</b><br>
+            <b>2. You can register the same Webhook URL multiple times.</b><br>
+            In that case, we recommend using a Prefix.The prefix help you ( or bot ,AI ) searching posts within a single channel.<br>
+            <b>Example:</b> If you set the prefix to <code>"Job Log:"</code>, your message "Hello, Discord!" will be posted as "<code>Job Log:Hello, Discord!</code>".<br>
+            <b>Note:</b> A trailing space in the prefix might be ignored depending on the environment.
         </blockquote>
         <div class="input-field">
             <input type="url" class="validate" id="webhook_url">
@@ -50,8 +56,7 @@
         <h5 class="mt-5 mi">WEBHOOK ITEMS</h5>
         <blockquote>
             You can rename webhook name and prefix by clicking the edit icon.<br>
-            however, you cannot change webhook URL.<br>
-            To change URL, please delete the item and add again.
+            However, If you want to change webhook URL, please delete the item and add again.
         </blockquote>
         <ul id="webhookList">
             </ul>
