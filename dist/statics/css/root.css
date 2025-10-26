@@ -1,5 +1,6 @@
 :root {
     --discord-color: #7289da;
     --forcus-color: #26a69a;
+    --system-color: #9e9e9e;
     --forcus-outline: 3px solid var(--forcus-color);
 }
