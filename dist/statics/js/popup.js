@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } 
         else {
             currentUrlDisplay.style.color = 'var(--system-color)';
-            currentUrlDisplay.textContent = `Include Current URL ( Enter/Space )`;
+            currentUrlDisplay.textContent = `Yes,I need to include current URL`;
         }
     }
     
