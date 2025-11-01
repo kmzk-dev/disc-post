@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const webhookSelect = document.getElementById('webhook_select');
     const loaderOverlay = document.getElementById('loader-overlay');
     const clearDraftBtn = document.getElementById('clear-draft-btn');
+    const includeUrlToggle = document.getElementById('includeUrlToggle');
+    const currentUrlDisplay = document.getElementById('current-url-display');
 
     // modal action
     const confirmModal = document.getElementById('confirm-modal');
@@ -18,6 +20,61 @@ document.addEventListener('DOMContentLoaded', function() {
             messageInput.focus();
         }
     });
+
+    // get current tab URL
+    let currentTabUrl = '';
+    function getCurrentTabUrl() {
+        chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+            if (tabs && tabs.length > 0) {
+                const url = tabs[0].url;
+                
+                if (typeof url === 'string') {
+                    if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('about:')) {
+                        currentTabUrl = '';
+                        includeUrlToggle.disabled = true;
+                        includeUrlToggle.checked = false;
+                    } else {
+                        currentTabUrl = url;
+                        includeUrlToggle.disabled = false;
+                    }
+                } else { 
+                    currentTabUrl = '';
+                    includeUrlToggle.disabled = true;
+                    includeUrlToggle.checked = false;
+                }
+            } else {
+                currentTabUrl = '';
+                includeUrlToggle.disabled = true;
+                includeUrlToggle.checked = false;
+            }
+            updateUrlDisplay();
+        });
+    }
+
+    // Update the URL display style and text based on the toggle state and URL existence
+    function updateUrlDisplay() {
+        if (!currentTabUrl || includeUrlToggle.disabled) {
+            currentUrlDisplay.style.color = 'var(--system-color)';
+            currentUrlDisplay.textContent = 'Unable to include URL';
+        } 
+        else if (includeUrlToggle.checked) {
+            currentUrlDisplay.style.color = 'var(--forcus-color)';
+            currentUrlDisplay.textContent = currentTabUrl;
+        } 
+        else {
+            currentUrlDisplay.style.color = 'var(--system-color)';
+            currentUrlDisplay.textContent = `Yes,I need to include current URL`;
+        }
+    }
+    
+    includeUrlToggle.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            includeUrlToggle.checked = !includeUrlToggle.checked;
+            updateUrlDisplay();
+        }
+    });
+    includeUrlToggle.addEventListener('click', updateUrlDisplay);
 
     // Replace label content in textarea
     function updatePrefixDisplay() {
@@ -110,6 +167,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const elems = document.querySelectorAll('select');
             M.FormSelect.init(elems);
             updatePrefixDisplay();
+            getCurrentTabUrl();
         });
     }
 
@@ -117,7 +175,12 @@ document.addEventListener('DOMContentLoaded', function() {
         postButton.disabled = true;
         loaderOverlay.classList.add('is-loading');
         
-        const message = messageInput.value.trim();
+        let message = messageInput.value.trim();
+
+        if (includeUrlToggle.checked && currentTabUrl && !includeUrlToggle.disabled) {
+            message = `${message}\n\n${currentTabUrl}`;
+        }
+
         const selectedOption = webhookSelect.options[webhookSelect.selectedIndex];
         const selectedWebhookUrl = selectedOption.value;
         const selectedWebhookName = selectedOption.textContent.substring(2); //remove "# "
@@ -129,8 +192,8 @@ document.addEventListener('DOMContentLoaded', function() {
             'lastSelectedWebhookUrl': selectedWebhookUrl
         });
 
-        if (message === '') {
-            alert('Enter a message to send.');
+        if (message.trim() === '') {
+            alert('required messages os current url if to post');
             postButton.disabled = false;
             loaderOverlay.classList.remove('is-loading');
             return;
